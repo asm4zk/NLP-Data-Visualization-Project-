@@ -25,5 +25,9 @@ def first_graph(word):
     for document in relevant_documents:
         d2[document[0]] = document[1][0]
         d[word] = d2
+    
+    f = open("first_graph.json", "w")
+    f.write(str(d))
+    f.close()
 
     return d
