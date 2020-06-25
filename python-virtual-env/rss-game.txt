@@ -1,0 +1,11 @@
+https://news.ea.com/feeds/press_release/all/rss.xml
+https://news.ea.com/feeds/press_release/46012/rss.xml
+https://news.ea.com/feeds/press_release/46003/rss.xml
+https://news.ea.com/feeds/press_release/46011/rss.xml
+https://news.ea.com/feeds/press_release/46010/rss.xml
+https://news.ea.com/feeds/press_release/46006/rss.xml
+https://www.nintendo.co.uk/news.xml
+https://www.sony.net/SonyInfo/News/Press/data/pressrelease_for_top.xml
+https://www.sony.net/SonyInfo/IR/rss/rss.xml
+https://www.sony.net/SonyInfo/csr/rss/rss.xml
+https://www.sony.net/SonyInfo/design/xml/news.xml
