@@ -23,11 +23,20 @@ def first_graph(word):
 
     d2 = {}
     for document in relevant_documents:
-        d2[document[0]] = document[1][0]
-        d[word] = d2
+        if document == relevant_documents[0]:
+            d2["Title"] = document[0]
+            d2["TFIDF"] = document[1][0]
+            d[word] = [d2]
+        else:
+            d2["Title"] = document[0]
+            d2["TFIDF"] = document[1][0]
+            d[word].append(d2)
     
     f = open("first_graph.json", "w")
     f.write(str(d))
     f.close()
 
     return d
+
+if __name__ == "__main__":
+    first_graph("command")
