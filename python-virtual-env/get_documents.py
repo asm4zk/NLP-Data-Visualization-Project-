@@ -22,7 +22,7 @@ def TFIDF(list_of_json):
     M = np.zeros((num_of_doc + 1, len(words) + 1), dtype = object)
     M[0][0] = " "
     for n in range(num_of_doc):
-        title = list_of_json[n]['title-of-article']
+        title = n # No title variable so just numberings
         M[n+1][0] = title
     for n in range(len(words)):
         word = words[n]
