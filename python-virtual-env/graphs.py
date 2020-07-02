@@ -58,34 +58,34 @@ def first_graph(word):
     for document in relevant_documents:
         d2 = {}
         if document == relevant_documents[0]:
-            d2["Title"] = document[0]
-            d2["TFIDF"] = document[1][0]
+            d2["title"] = document[0]
+            d2["tfidf"] = document[1][0]
             for index, row in coordinates_data_frame.iterrows():
                 if row["json"] == document[0]:
                     d2["x"] = row["principal component 1"]
                     d2["y"] = row["principal component 2"]
                     break
-            d2["Main Lemmas"] = hits[document[0]]['_source']['data']['mainLemmas']
+            d2["main-lemmas"] = hits[document[0]]['_source']['data']['mainLemmas']
             d2["k-means"] = k_means[0]
             k_means = np.delete(k_means, 0)
-            d2["Hierarchical Agglomerative"] = best_hierarchical[0]
+            d2["hierarchical-agglomerative"] = best_hierarchical[0]
             best_hierarchical = np.delete(best_hierarchical, 0)
-            d2["LDA"] = LDA[0]
+            d2["lda"] = LDA[0]
             LDA = np.delete(LDA, 0)
             d[word] = [d2]
         else:
-            d2["Title"] = document[0]
-            d2["TFIDF"] = document[1][0]
+            d2["title"] = document[0]
+            d2["tfidf"] = document[1][0]
             for index, row in coordinates_data_frame.iterrows():
                 if row["json"] == document[0]:
                     d2["x"] = row["principal component 1"]
                     d2["y"] = row["principal component 2"]
-            d2["Main Lemmas"] = hits[document[0]]['_source']['data']['mainLemmas']
+            d2["main-lemmas"] = hits[document[0]]['_source']['data']['mainLemmas']
             d2["k-means"] = k_means[0]
             k_means = np.delete(k_means, 0)
-            d2["Hierarchical Agglomerative"] = best_hierarchical[0]
+            d2["hierarchical-agglomerative"] = best_hierarchical[0]
             best_hierarchical = np.delete(best_hierarchical, 0)
-            d2["LDA"] = LDA[0]
+            d2["lda"] = LDA[0]
             LDA = np.delete(LDA, 0)
             d[word].append(d2)
     
@@ -153,6 +153,7 @@ def second_graph(word):
     for document in relevant_documents:
         relevant_jsons.append(jsons[document[0] + 1])
     
+    relevant_term_frequency = term_frequency(relevant_jsons)
     relevant_tfidf = get_documents.TFIDF(relevant_jsons)
     
     coordinates_data_frame = data_frame_nmf_words(relevant_tfidf)
@@ -161,6 +162,17 @@ def second_graph(word):
     for term in range(len(relevant_tfidf[0])):
         if term != 0:
             relevant_words.append(relevant_tfidf[0][term])
+    
+    relevant_term_frequency = np.delete(relevant_term_frequency, 0, 1)
+    terms_frequency = []
+    for elem in range(len(relevant_term_frequency[0])):
+        column = relevant_term_frequency[:,elem]
+        word = column[0]
+        column = np.delete(column, 0)
+        frequency_sum = 0
+        for num in column:
+            frequency_sum += num
+        terms_frequency.append((word, frequency_sum))
     
     nmf = coordinates_data_frame.drop('json', axis=1)
     (best_k_means, best_HA, best_LDA) = get_best_clusterings(coordinates_data_frame)
@@ -176,14 +188,19 @@ def second_graph(word):
     d[word] = []
     for index, row in coordinates_data_frame.iterrows():
         d2 = {}
-        d2["Word"] = row["json"]
+        d2["word"] = row["json"]
         d2["x"] = row["principal component 1"]
         d2["y"] = row["principal component 2"]
         d2["k-means"] = k_means[0]
         k_means = np.delete(k_means, 0)
-        d2["Hierarchical Agglomerative"] = best_hierarchical[0]
+        d2["hierarchical-agglomerative"] = best_hierarchical[0]
         best_hierarchical = np.delete(best_hierarchical, 0)
-        d2["LDA"] = LDA[0]
+        d2["lda"] = LDA[0]
+        for elem in terms_frequency:
+            if elem[0] == row["json"]:
+                d2["frequency"] = elem[1]
+                terms_frequency.remove(elem)
+                break
         LDA = np.delete(LDA, 0)
         d[word].append(d2)
     
@@ -280,6 +297,43 @@ def get_best_clusterings(nmf, test_clusters=10):
     return (k_means_index_max, hierarchical_agglomerative_index_max, lda_index_max)
 
 
+def term_frequency(list_of_json):
+    ps = PorterStemmer()
+    num_of_doc = len(list_of_json)
+    words = []
+    for j in list_of_json:
+        info = j['content']
+        tokenized_info = re.findall(r'\w+', info)
+        # esBigrams = ngrams(tokenized_info, 2)
+        # print(list(esBigrams))
+        for word in tokenized_info:
+            word = ps.stem(word)
+            if word not in words and word not in stopwords.words('english'):
+                words.append(word)
+
+    M = np.zeros((num_of_doc + 1, len(words) + 1), dtype = object)
+    M[0][0] = " "
+    for n in range(num_of_doc):
+        title = list_of_json[n]
+        M[n+1][0] = title
+    for n in range(len(words)):
+        word = words[n]
+        M[0][n+1] = word
+
+    for n in range(num_of_doc):
+        title_axis_value = n + 1
+        list_of_words = re.findall(r'\w+', list_of_json[n]['content'])
+        for word in list_of_words:
+            word = ps.stem(word)
+            for i in range(len(M[0])):
+                if M[0][i] == word:
+                    word_axis_value = i
+                    break
+            M[title_axis_value][word_axis_value] += 1
+    
+    return M
+
+
 if __name__ == "__main__":
-    first_graph("command")
+    # first_graph("command")
     second_graph("command")
