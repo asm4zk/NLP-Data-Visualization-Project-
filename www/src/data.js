@@ -63,22 +63,33 @@ let data = {
 ]}
 
 function BarChart(data) {
-        let title = [];
-        let score = [];
+        let titles = [];
+        let scores = [];
     data.forEach(item => {
-        title.push(item.title),
-        score.push(item.score)
+        titles.push(item.title),
+        scores.push(item.score)
     })
 return {
-    title: title,
-    score: score
+    title: titles,
+    score: scores
 }
 }
 function ScatterChart(data) {
-    let title= [];
-    let value= [];
+    let titles= [];
+    let values= [];
     data.forEach(item => {
-        value.push([item.x, item.y]);
+        values.push([item.x, item.y]);
+        titles.push(item.title);
+    })
+    return {
+        data: values
+    }
+}
+function BubbleChart(data) {
+    let title = [];
+    let values = [];
+    data.forEach(item => {
+        values.push([item.x, item.y, item.score]);
         title.push(item.title);
     })
     return {
@@ -86,7 +97,8 @@ function ScatterChart(data) {
     }
 }
 
-export {data, BarChart, ScatterChart}
+
+export {data, BarChart, ScatterChart, BubbleChart}
 
 
 
