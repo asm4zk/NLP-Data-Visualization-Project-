@@ -70,13 +70,7 @@
                 <NLPVizChart title="test 1" description="this is the description for test1" color="white">
                     <WordBubbleKM {data4} />
                 </NLPVizChart>
-            </div>
-        
-
-
-
-
-        
+            </div>    
         
         </div>
     </div>

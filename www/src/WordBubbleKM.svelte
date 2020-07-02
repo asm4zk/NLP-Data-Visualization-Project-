@@ -12,7 +12,7 @@
         var options = {
           series: [{
           name: 'Title',
-          data: obj.value,
+          data: obj.data4
         }],
           chart: {
             height: 500,

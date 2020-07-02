@@ -10439,7 +10439,7 @@ function BubbleChart(data4) {
     let Word = [];
     let value = [];
     data4.forEach(item => {
-        value.push([item.x, item.y, item[3]]);
+        value.push([item.x, item.y, item.kmeans]);
         Word.push(item.Word);
     })
     return {
