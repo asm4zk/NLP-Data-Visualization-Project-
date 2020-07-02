@@ -5,11 +5,17 @@ import re
 import json
 import numpy as np
 import pandas as pd
+import gensim.corpora as corpora
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import NMF
+from sklearn.decomposition import LatentDirichletAllocation
 from elasticsearch import Elasticsearch
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
+from sklearn.cluster import KMeans
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import silhouette_score
+from gensim.models import CoherenceModel
 
 def first_graph(word):
     """
@@ -38,6 +44,17 @@ def first_graph(word):
 
     coordinates_data_frame = data_frame_nmf_documents(relevant_tfidf)
 
+    nmf = coordinates_data_frame.drop('json', axis=1)
+    (best_k_means, best_HA, best_LDA) = get_best_clusterings(coordinates_data_frame)
+
+    k_means = KMeans(n_clusters=best_k_means).fit_predict(nmf)
+
+    best_hierarchical = AgglomerativeClustering(n_clusters = best_HA).fit_predict(nmf)
+
+    kmeans_helper = KMeans(n_clusters = best_LDA) # Create K-means
+    lda_point = LatentDirichletAllocation(n_components = best_LDA).fit_transform(X=nmf) # Create lda and fit transform it into out_lda using nmf as the dataset
+    LDA = kmeans_helper.fit_predict(lda_point) # Use the fit_predict method in kmeans to get a value for the lda
+
     for document in relevant_documents:
         d2 = {}
         if document == relevant_documents[0]:
@@ -49,6 +66,12 @@ def first_graph(word):
                     d2["y"] = row["principal component 2"]
                     break
             d2["Main Lemmas"] = hits[document[0]]['_source']['data']['mainLemmas']
+            d2["k-means"] = k_means[0]
+            k_means = np.delete(k_means, 0)
+            d2["Hierarchical Agglomerative"] = best_hierarchical[0]
+            best_hierarchical = np.delete(best_hierarchical, 0)
+            d2["LDA"] = LDA[0]
+            LDA = np.delete(LDA, 0)
             d[word] = [d2]
         else:
             d2["Title"] = document[0]
@@ -58,6 +81,12 @@ def first_graph(word):
                     d2["x"] = row["principal component 1"]
                     d2["y"] = row["principal component 2"]
             d2["Main Lemmas"] = hits[document[0]]['_source']['data']['mainLemmas']
+            d2["k-means"] = k_means[0]
+            k_means = np.delete(k_means, 0)
+            d2["Hierarchical Agglomerative"] = best_hierarchical[0]
+            best_hierarchical = np.delete(best_hierarchical, 0)
+            d2["LDA"] = LDA[0]
+            LDA = np.delete(LDA, 0)
             d[word].append(d2)
     
     f = open("first_graph.json", "w")
@@ -132,6 +161,17 @@ def second_graph(word):
     for term in range(len(relevant_tfidf[0])):
         if term != 0:
             relevant_words.append(relevant_tfidf[0][term])
+    
+    nmf = coordinates_data_frame.drop('json', axis=1)
+    (best_k_means, best_HA, best_LDA) = get_best_clusterings(coordinates_data_frame)
+
+    k_means = KMeans(n_clusters=best_k_means).fit_predict(nmf)
+
+    best_hierarchical = AgglomerativeClustering(n_clusters = best_HA).fit_predict(nmf)
+
+    kmeans_helper = KMeans(n_clusters = best_LDA) # Create K-means
+    lda_point = LatentDirichletAllocation(n_components = best_LDA).fit_transform(X=nmf) # Create lda and fit transform it into out_lda using nmf as the dataset
+    LDA = kmeans_helper.fit_predict(lda_point) # Use the fit_predict method in kmeans to get a value for the lda
 
     d[word] = []
     for index, row in coordinates_data_frame.iterrows():
@@ -139,6 +179,12 @@ def second_graph(word):
         d2["Word"] = row["json"]
         d2["x"] = row["principal component 1"]
         d2["y"] = row["principal component 2"]
+        d2["k-means"] = k_means[0]
+        k_means = np.delete(k_means, 0)
+        d2["Hierarchical Agglomerative"] = best_hierarchical[0]
+        best_hierarchical = np.delete(best_hierarchical, 0)
+        d2["LDA"] = LDA[0]
+        LDA = np.delete(LDA, 0)
         d[word].append(d2)
     
     f = open("second_graph.json", "w")
@@ -184,5 +230,56 @@ def data_frame_nmf_words(X):
 
     return final_data_frame
 
+
+def get_best_clusterings(nmf, test_clusters=10):
+    """
+    Return the best number of clusters for K-means, Hierarchical Agglomerative, and LDA clusterings
+    """
+    nmf = nmf.drop('json', axis=1) # Drop the json column
+
+    k_means_x = []
+    k_means_y = []
+    for i in range(2, test_clusters):
+        kmeans_point = KMeans(n_clusters = i).fit(nmf)
+        preds = kmeans_point.fit_predict(nmf)
+        x = i # x-value = Number of clusters
+        k_means_x.append(x)
+        y = silhouette_score(nmf, preds) # y-value = Silhouette Score
+        k_means_y.append(y)
+
+    hierarchical_agglomerative_x = []
+    hierarchical_agglomerative_y = []
+    for i in range(2, test_clusters):
+        hierarchical_agglomerative_point = AgglomerativeClustering(n_clusters = i).fit(nmf)
+        preds = hierarchical_agglomerative_point.fit_predict(nmf)
+        x = i # x-value = Number of clusters
+        hierarchical_agglomerative_x.append(x)
+        y = silhouette_score(nmf, preds) # y-value = Silhouette Score
+        hierarchical_agglomerative_y.append(y)
+    
+    latent_dirichlet_allocation_x = []
+    latent_dirichlet_allocation_y = []
+    for i in range(2, test_clusters):
+        latent_dirichlet_allocation_point = LatentDirichletAllocation(n_components = i).fit(nmf) # Create LDA
+        x = i # x-value = Number of components or topics
+        latent_dirichlet_allocation_x.append(x)
+        y = latent_dirichlet_allocation_point.bound_
+        latent_dirichlet_allocation_y.append(y)
+
+
+    k_means_index_max = np.argmax(k_means_y)
+    k_means_index_max = k_means_x[k_means_index_max]
+
+
+    hierarchical_agglomerative_index_max = np.argmax(hierarchical_agglomerative_y)
+    hierarchical_agglomerative_index_max = hierarchical_agglomerative_x[hierarchical_agglomerative_index_max]
+
+    lda_index_max = np.argmax(latent_dirichlet_allocation_y)
+    lda_index_max = latent_dirichlet_allocation_x[lda_index_max]
+
+    return (k_means_index_max, hierarchical_agglomerative_index_max, lda_index_max)
+
+
 if __name__ == "__main__":
+    first_graph("command")
     second_graph("command")
