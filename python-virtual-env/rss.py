@@ -28,15 +28,6 @@ def get_texts():
         try:
             g = Goose()
             html = g.extract(url = elem)
-            
-            # final_dict = {}
-            # final_dict["url"] = html.final_url
-            # final_dict["title-of-article"] = html.title
-            # now = datetime.now()
-            # timestamp = datetime.timestamp(now)
-            # final_dict["time-stamp"] = timestamp
-            # final_dict["content"] = html.cleaned_text
-            # jsonD = json.dumps(final_dict, indent = 3)
 
             title = html.title.encode('utf-8')
             lines = html.cleaned_text.split("\n") # replace all newlines with \n
@@ -54,10 +45,6 @@ def get_texts():
             js_response = x.text
 
             id = hashlib.sha1(title).hexdigest()
-
-            # f = open("document-%s.json" % id, 'w')
-            # f.write(jsonD)
-            # f.close()
 
             es=Elasticsearch([{'host':'localhost','port':9200}])
             es.index(index='internship_jsons',doc_type='json',id=id,body=js_response)
