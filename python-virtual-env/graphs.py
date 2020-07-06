@@ -16,6 +16,7 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 from gensim.models import CoherenceModel
+import logging
 
 def first_graph(word):
     """
@@ -130,11 +131,11 @@ def data_frame_nmf_documents(X):
 
     return final_data_frame
 
-def second_graph(word):
+def second_graph(jsons):
     """
     Get values of tfidf for relevant documents
     """
-
+    """
     es = Elasticsearch([{'host':'localhost','port':9200}])
     res = es.search(index='internship_jsons', doc_type='json', size=1000)
 
@@ -143,18 +144,17 @@ def second_graph(word):
     jsons = []
     for hit in hits:
         jsons.append(hit['_source']['data'])
+    """
+    logging.info(f"Calculating TFIDF for {len(jsons)} documents")
+    # tfidf = get_documents.TFIDF(jsons)
+    # relevant_documents = get_documents.get_associated_documents(tfidf, word)
 
-    d = {}
-
-    tfidf = get_documents.TFIDF(jsons)
-    relevant_documents = get_documents.get_associated_documents(tfidf, word)
-
-    relevant_jsons = []
-    for document in relevant_documents:
-        relevant_jsons.append(jsons[document[0] + 1])
+    # relevant_jsons = []
+    # for document in relevant_documents:
+    #     relevant_jsons.append(jsons[document[0] + 1])
     
-    relevant_term_frequency = term_frequency(relevant_jsons)
-    relevant_tfidf = get_documents.TFIDF(relevant_jsons)
+    relevant_term_frequency = term_frequency(jsons)
+    relevant_tfidf = get_documents.TFIDF(jsons)
     
     coordinates_data_frame = data_frame_nmf_words(relevant_tfidf)
 
@@ -174,18 +174,24 @@ def second_graph(word):
             frequency_sum += num
         terms_frequency.append((word, frequency_sum))
     
+    logging.info("Running Non-Negative Matrix Factorization")
     nmf = coordinates_data_frame.drop('json', axis=1)
     (best_k_means, best_HA, best_LDA) = get_best_clusterings(coordinates_data_frame)
 
+    logging.info("Running k-means")
     k_means = KMeans(n_clusters=best_k_means).fit_predict(nmf)
 
+    logging.info("Running HAC")
     best_hierarchical = AgglomerativeClustering(n_clusters = best_HA).fit_predict(nmf)
 
     kmeans_helper = KMeans(n_clusters = best_LDA) # Create K-means
+    
+    logging.info("Running LDA")
     lda_point = LatentDirichletAllocation(n_components = best_LDA).fit_transform(X=nmf) # Create lda and fit transform it into out_lda using nmf as the dataset
     LDA = kmeans_helper.fit_predict(lda_point) # Use the fit_predict method in kmeans to get a value for the lda
 
-    d[word] = []
+    logging.info("Preparing output as json")
+    d = []
     for index, row in coordinates_data_frame.iterrows():
         d2 = {}
         d2["word"] = row["json"]
@@ -202,11 +208,13 @@ def second_graph(word):
                 terms_frequency.remove(elem)
                 break
         LDA = np.delete(LDA, 0)
-        d[word].append(d2)
+        d.append(d2)
     
+    """
     f = open("second_graph.json", "w")
     f.write(str(d))
     f.close()
+    """
 
     return d
 
@@ -320,6 +328,7 @@ def term_frequency(list_of_json):
         word = words[n]
         M[0][n+1] = word
 
+    word_axis_value = -1
     for n in range(num_of_doc):
         title_axis_value = n + 1
         list_of_words = re.findall(r'\w+', list_of_json[n]['content'])

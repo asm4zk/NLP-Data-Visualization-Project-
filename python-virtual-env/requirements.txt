@@ -1,0 +1,11 @@
+bs4
+requests
+goose3
+feedparser
+elasticsearch
+pandas
+nltk
+gensim
+scikit-learn
+numpy
+flask
