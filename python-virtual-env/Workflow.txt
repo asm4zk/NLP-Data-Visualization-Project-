@@ -1,0 +1,5 @@
+Create TFIDF Matrix (documents * words)
+Calculate H*W = NMF(TFIDF) H=documents * components, W = components * words (components = m)
+Use W for K-Means, HAC, //LDA
+Distance Matrix of W (n * n) (n = number of words) distance=cosine similarity between words (every word is a vector of m components)
+Use W for PCA

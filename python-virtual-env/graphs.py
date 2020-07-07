@@ -6,6 +6,8 @@ import json
 import numpy as np
 import pandas as pd
 import gensim.corpora as corpora
+
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import NMF
 from sklearn.decomposition import LatentDirichletAllocation
@@ -16,6 +18,7 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 from gensim.models import CoherenceModel
+from sklearn.decomposition import PCA
 import logging
 
 def first_graph(word):
@@ -121,15 +124,15 @@ def data_frame_nmf_documents(X):
     for x in np.nditer(data, op_flags=['readwrite']): # Translate every value in data into a positive value by adding the absolute value of the lowest, keeping the distance between values
         x[...] += abs(lowest)
 
-    nmf = NMF(n_components=2) # Create a 2-dimension nmf using the nmf method in the sklearn library
+    pca = PCA(n_components=2) # Create a 2-dimension nmf using the nmf method in the sklearn library
 
-    principalComponents = nmf.fit_transform(data) # Get the standardized data and put it in the nmf
+    principalComponents = pca.fit_transform(data) # Get the standardized data and put it in the nmf
 
     principal_data_frame = pd.DataFrame(data = principalComponents, columns = ['principal component 1', 'principal component 2']) # Create new data frame with the new adjustments
 
-    final_data_frame = pd.concat([principal_data_frame, data_frame[['json']]], axis = 1) # Add the json titles at then end of the data frame
+    #final_data_frame = pd.concat([principal_data_frame, data_frame[['json']]], axis = 1) # Add the json titles at then end of the data frame
 
-    return final_data_frame
+    return principal_data_frame
 
 def second_graph(jsons):
     """
@@ -153,41 +156,56 @@ def second_graph(jsons):
     # for document in relevant_documents:
     #     relevant_jsons.append(jsons[document[0] + 1])
     
-    relevant_term_frequency = term_frequency(jsons)
-    relevant_tfidf = get_documents.TFIDF(jsons)
-    
-    coordinates_data_frame = data_frame_nmf_words(relevant_tfidf)
+    relevant_term_frequency, dictionary = term_frequency(jsons)
 
-    relevant_words = []
-    for term in range(len(relevant_tfidf[0])):
-        if term != 0:
-            relevant_words.append(relevant_tfidf[0][term])
+    contents = []
+    for j in jsons:
+        tokens = j["tokens"]
+        _words = [token["lemma"] for token in tokens]
+        _words = [word for word in _words if len(word) > 1 and not word.isnumeric()]
+        _words = [word for word in _words if word.lower() not in stopwords.words("english")]
+        contents.append(" ".join([word.replace(' ', "_") for word in _words]))
+    vectorizer = TfidfVectorizer()
+    vectors = vectorizer.fit_transform(contents)
+    feature_names = vectorizer.get_feature_names()
+    relevant_tfidf = vectors.todense()
+    denselist = relevant_tfidf.tolist()
+    df = pd.DataFrame(denselist, columns=feature_names)
+    #relevant_tfidf = vectorizer.fit_transform(contents)
+    #relevant_tfidf = get_documents.TFIDF(jsons)
     
-    relevant_term_frequency = np.delete(relevant_term_frequency, 0, 1)
-    terms_frequency = []
-    for elem in range(len(relevant_term_frequency[0])):
-        column = relevant_term_frequency[:,elem]
-        word = column[0]
-        column = np.delete(column, 0)
-        frequency_sum = 0
-        for num in column:
-            frequency_sum += num
-        terms_frequency.append((word, frequency_sum))
+    coordinates_data_frame = data_frame_nmf_words(df)
+
+    # relevant_words = []
+    # for term in range(len(relevant_tfidf[0])):
+    #     if term != 0:
+    #         relevant_words.append(relevant_tfidf[0][term])
+    #
+    # relevant_term_frequency = np.delete(relevant_term_frequency, 0, 1)
+    # terms_frequency = []
+    # for elem in range(len(relevant_term_frequency[0])):
+    #     column = relevant_term_frequency[:,elem]
+    #     word = column[0]
+    #     column = np.delete(column, 0)
+    #     frequency_sum = 0
+    #     for num in column:
+    #         frequency_sum += num
+    #     terms_frequency.append((word, frequency_sum))
     
     logging.info("Running Non-Negative Matrix Factorization")
-    nmf = coordinates_data_frame.drop('json', axis=1)
+    #nmf = coordinates_data_frame.drop('json', axis=1)
     (best_k_means, best_HA, best_LDA) = get_best_clusterings(coordinates_data_frame)
 
     logging.info("Running k-means")
-    k_means = KMeans(n_clusters=best_k_means).fit_predict(nmf)
+    k_means = KMeans(n_clusters=best_k_means).fit_predict(coordinates_data_frame)
 
     logging.info("Running HAC")
-    best_hierarchical = AgglomerativeClustering(n_clusters = best_HA).fit_predict(nmf)
+    best_hierarchical = AgglomerativeClustering(n_clusters = best_HA).fit_predict(coordinates_data_frame)
 
     kmeans_helper = KMeans(n_clusters = best_LDA) # Create K-means
     
     logging.info("Running LDA")
-    lda_point = LatentDirichletAllocation(n_components = best_LDA).fit_transform(X=nmf) # Create lda and fit transform it into out_lda using nmf as the dataset
+    lda_point = LatentDirichletAllocation(n_components = best_LDA).fit_transform(X=coordinates_data_frame) # Create lda and fit transform it into out_lda using nmf as the dataset
     LDA = kmeans_helper.fit_predict(lda_point) # Use the fit_predict method in kmeans to get a value for the lda
 
     logging.info("Preparing output as json")
@@ -219,48 +237,49 @@ def second_graph(jsons):
     return d
 
 
-def data_frame_nmf_words(X):
-    X = np.transpose(X)
-    jsons = X[:,0] # Get list of titles
-    jsons = np.delete(jsons, 0, 0) # Remove empty corner space
-    X = np.delete(X, 0, 1) # Delete the list of words
-    words = X[0,:] # Get the list of words
-    X = np.delete(X, 0, 0) # Delete the list of titles
-    X = X.astype('float') # Change type to float as there are only floats left
+def data_frame_nmf_words(df):
 
-    d = {} # Create new dictionary to create the data frame with pandas. Get words one by one as the keys and the list of frequencies per document as the values
-    for word in words:
-        d[word] = X[:,0]
-        X = np.delete(X, 0, 1)
-    d["json"] = jsons # Add the jsons titles at the end of the dictionary
+    #X = np.transpose(X)
+    #jsons = X[:,0] # Get list of titles
+    #jsons = np.delete(jsons, 0, 0) # Remove empty corner space
+    #X = np.delete(X, 0, 1) # Delete the list of words
+    #words = X[0,:] # Get the list of words
+    #X = np.delete(X, 0, 0) # Delete the list of titles
+    #X = X.astype('float') # Change type to float as there are only floats left
 
-    data_frame = pd.DataFrame(d) # Create the data frame with pandas
+    #d = {} # Create new dictionary to create the data frame with pandas. Get words one by one as the keys and the list of frequencies per document as the values
+    #for word in words:
+    #    d[word] = X[:,0]
+    #    X = np.delete(X, 0, 1)
+    #d["json"] = jsons # Add the jsons titles at the end of the dictionary
 
-    x = data_frame.loc[:, words].values # Separate out the words
+    #data_frame = pd.DataFrame(d) # Create the data frame with pandas
 
-    data = StandardScaler().fit_transform(x) # Standardize the words with the sklearn library
+    #x = data_frame.loc[:, words].values # Separate out the words
 
+    data = StandardScaler().fit_transform(df) # Standardize the words with the sklearn library
+    data = np.transpose(data)
     lowest = np.amin(data) # Get minimum value in data
 
     for x in np.nditer(data, op_flags=['readwrite']): # Translate every value in data into a positive value by adding the absolute value of the lowest, keeping the distance between values
         x[...] += abs(lowest)
 
-    nmf = NMF(n_components=2) # Create a 2-dimension nmf using the nmf method in the sklearn library
+    pca = PCA(n_components=2) # Create a 2-dimension nmf using the pca method in the sklearn library
 
-    principalComponents = nmf.fit_transform(data) # Get the standardized data and put it in the nmf
+    principalComponents = pca.fit_transform(data) # Get the standardized data and put it in the nmf
 
     principal_data_frame = pd.DataFrame(data = principalComponents, columns = ['principal component 1', 'principal component 2']) # Create new data frame with the new adjustments
 
-    final_data_frame = pd.concat([principal_data_frame, data_frame[['json']]], axis = 1) # Add the json titles at then end of the data frame
+    #final_data_frame = pd.concat([principal_data_frame, df[['json']]], axis = 1) # Add the json titles at then end of the data frame
 
-    return final_data_frame
+    return principal_data_frame
 
 
 def get_best_clusterings(nmf, test_clusters=10):
     """
     Return the best number of clusters for K-means, Hierarchical Agglomerative, and LDA clusterings
     """
-    nmf = nmf.drop('json', axis=1) # Drop the json column
+    #nmf = nmf.drop('json', axis=1) # Drop the json column
 
     k_means_x = []
     k_means_y = []
@@ -306,41 +325,34 @@ def get_best_clusterings(nmf, test_clusters=10):
 
 
 def term_frequency(list_of_json):
-    ps = PorterStemmer()
     num_of_doc = len(list_of_json)
     words = []
+    dictionary = []
     for j in list_of_json:
-        info = j['content']
-        tokenized_info = re.findall(r'\w+', info)
-        # esBigrams = ngrams(tokenized_info, 2)
-        # print(list(esBigrams))
-        for word in tokenized_info:
-            word = ps.stem(word)
-            if word not in words and word not in stopwords.words('english'):
-                words.append(word)
+        tokens = j["tokens"]
+        _words = [token["lemma"] for token in tokens]
+        _words = [word for word in _words if len(word) > 1 and not word.isnumeric()]
+        _words = [word for word in _words if word.lower() not in stopwords.words("english")]
+        for word in _words:
+            if not word in dictionary:
+                dictionary.append(word)
 
-    M = np.zeros((num_of_doc + 1, len(words) + 1), dtype = object)
-    M[0][0] = " "
-    for n in range(num_of_doc):
-        title = list_of_json[n]
-        M[n+1][0] = title
-    for n in range(len(words)):
-        word = words[n]
-        M[0][n+1] = word
+    M = np.zeros((num_of_doc, len(dictionary)), dtype=object)
+    nrow = 0
+    for j in list_of_json:
+        tokens = j["tokens"]
+        for token in tokens:
+            print(token["lemma"])
+        _words = [token["lemma"] for token in tokens]
+        _words = [word for word in _words if len(word) > 1 and not word.isnumeric()]
+        _words = [word for word in _words if word.lower() not in stopwords.words("english")]
 
-    word_axis_value = -1
-    for n in range(num_of_doc):
-        title_axis_value = n + 1
-        list_of_words = re.findall(r'\w+', list_of_json[n]['content'])
-        for word in list_of_words:
-            word = ps.stem(word)
-            for i in range(len(M[0])):
-                if M[0][i] == word:
-                    word_axis_value = i
-                    break
-            M[title_axis_value][word_axis_value] += 1
-    
-    return M
+        logging.info(f"Found {len(_words)} _words")
+        for word in _words:
+            ncol = dictionary.index(word)
+            M[nrow][ncol] = M[nrow][ncol] + 1
+        nrow = nrow + 1
+    return M, dictionary
 
 
 if __name__ == "__main__":

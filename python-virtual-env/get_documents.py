@@ -8,7 +8,6 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 
 def TFIDF(list_of_json):
-    ps = PorterStemmer()
     num_of_doc = len(list_of_json)
     words = []
     for j in list_of_json:
