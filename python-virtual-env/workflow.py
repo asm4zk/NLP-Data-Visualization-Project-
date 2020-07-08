@@ -187,23 +187,69 @@ def render(vocab, features_xy, frequencies, tfidfs, kmeans, hac, lda):
     return output
 
 # --- WORKFLOW --- #
-def workflow(query):
+def workflow(query, sid, sessions):
     ncorpus = count()
+    sessions[sid]={
+        "status": 5,
+        "info": "ncorpus"
+    }
     jsons = search(query)
+    sessions[sid]={
+        "status": 15,
+        "info": "ncorpus"
+    }
     contents, frequencies = preprocess(jsons)
+    sessions[sid]={
+        "status": 20,
+        "info": "preprocess"
+    }
     features, vocab = tfidf(contents)
+    sessions[sid]={
+        "status": 25,
+        "info": "tfidf"
+    }
     tfidfs = tfidfVocab(features, vocab)
+    sessions[sid]={
+        "status": 30,
+        "info": "tfidf-vocab"
+    }
     W,H = _NMF(features)
     H = np.transpose(H)
-    best_kmeans, best_hac, best_lda = get_best_clusterings(H, int(ncorpus/40), int(ncorpus/40) + 5)
+    sessions[sid]={
+        "status": 40,
+        "info": "nmf"
+    }
+    best_kmeans, best_hac, best_lda = get_best_clusterings(H, int(ncorpus/80), int(ncorpus/80) + 5)
+    sessions[sid]={
+        "status": 50,
+        "info": "best_clustering"
+    }
     kmeans = run_kmeans(H, best_kmeans)
+    sessions[sid]={
+        "status": 60,
+        "info": "kmeans"
+    }
     hac = run_hac(H, best_hac)
+    sessions[sid]={
+        "status": 70,
+        "info": "hac"
+    }
     lda = run_lda(H, best_lda)
+    sessions[sid]={
+        "status": 80,
+        "info": "lda"
+    }
     features_xy = viz(H)
+    sessions[sid]={
+        "status": 90,
+        "info": "viz"
+    }
     output = render(vocab, features_xy, frequencies, tfidfs, kmeans, hac, lda)
     logging.info("Process over")
     return {
         "ncorpus": ncorpus,
         "nserp": len(jsons),
+        "status": 100,
+        "info": "done",
         "data": output
     }

@@ -4,23 +4,20 @@
 
 
     export let data = [];
-    
-    $: if(data) console.log("NLPVizBubble:$", data);
+    export let algo = "lda"
+    let chart;
 
-    onMount(() => {
-        let obj = BubbleChart(data.command);
-        var options = {
-          series: [{
-          name: 'Title',
-          data: obj.data
-        }],
+    $: if(chart && data) data = drawData(data);
+
+    var options = {
+          series: [],
           chart: {
-            height: 350,
+            height: 400,
             type: 'bubble',
     
         },
         dataLabels: {
-            enabled: false,
+            enabled: true,
         },
         plotOptions :{
             bubble: {
@@ -39,8 +36,8 @@
             decimalsInFloat: true,
             labels: {
                 formatter: function(val) {
-                return parseFloat(val).toFixed(1)
-                    }
+                    return parseFloat(val).toFixed(1)
+                }
         }
         },
         yaxis: {
@@ -50,9 +47,21 @@
         }
         };
 
-        var chart = new ApexCharts(document.querySelector("#nlpviz-bubble"), options);
+    function drawData(data) {
+        console.log("NLPVizBubble:drawData", data);
+        let series = BubbleChart(data, algo);
+        let options = {
+            series: series
+        }
+
+        chart.updateOptions(options);
+        return data;
+    }
+
+    onMount(() => {
+        chart = new ApexCharts(document.querySelector(`#nlpviz-bubble-${algo}`), options);
         chart.render();
 
 })
 </script>
-<div id="nlpviz-bubble"/>
+<div id="nlpviz-bubble-{algo}"/>

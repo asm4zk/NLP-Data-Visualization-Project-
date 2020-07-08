@@ -29,7 +29,7 @@ sessions = {}
 
 def run(query, sid):
     start = datetime.now().microsecond
-    data = workflow(query)
+    data = workflow(query, sid, sessions)
     end = datetime.now().microsecond
     data["sid"] = sid
     delta = (end - start) / 1000
@@ -55,9 +55,15 @@ def status():
 @cross_origin()
 def search():
     query = request.args.get("query")
+    if query is None or query == "":
+        query = "*"
+    rerun = request.args.get("rerun")
+    if rerun is None or rerun == "":
+        rerun = False
     sid = hashlib.md5(query.encode()).hexdigest()
-    t = threading.Thread(target=run, args=(query,sid,))
-    t.start()
+    if sessions.get(sid) is None or rerun == "true":
+        t = threading.Thread(target=run, args=(query,sid,))
+        t.start()
     return sid
 
 if __name__ == "__main__":

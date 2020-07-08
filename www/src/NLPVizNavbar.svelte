@@ -13,9 +13,10 @@
         query = "";
     }
 
-    async function search() {
+    async function search(rerun) {
+        serp = {};
         console.log("NLPVizNavBar:search", query);
-		const res = await fetch(`http://localhost:18080/search?query=${query}`);
+		const res = await fetch(`http://localhost:18080/search?query=${query}&rerun=${rerun}`);
         sid = await res.text();
         
         let i = setInterval(() => {
@@ -23,8 +24,8 @@
                 status()
             else {
                 clearInterval(i);
-                notify(serp);
             }
+            notify(serp);
         }, 1000);
 
 		console.log("NLPVizNavBar:search", sid);
@@ -49,7 +50,7 @@
                 <span class="bmd-form-group">
                     <div class="input-group no-border">
                         <input style="width:320px" type="text" bind:value={query} class="form-control" placeholder="Search...">
-                        <button class="btn btn-white btn-round btn-just-icon" on:click={search}>
+                        <button class="btn btn-white btn-round btn-just-icon" on:click={() => search(false)} on:dblclick={() => search(true)}>
                             <i class="material-icons">search</i>
                             <div class="ripple-container"></div>
                             <div class="ripple-container"></div>

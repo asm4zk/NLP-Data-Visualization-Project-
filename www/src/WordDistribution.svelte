@@ -2,22 +2,19 @@
     import {BarChart} from "./data.js"
     import {onMount} from 'svelte'
 
-    export let data = [];
+    export let data;
+    let chart;
 
-    $: if(data) console.log("Worddistribution:$", data);
+    //$: if(chart && data) console.log("Worddistribution:$", data);
+    $: if(chart && data) data = drawData(data);
 
-    onMount(() => {
-        let obj = BarChart(data.command);
-        let _data = data.command.map (value => value.score)
-        var options = {
-          series: [{
-            name: obj.title,
-            data: _data,
-        }],
+    let options = {
+          series: [],
           chart: {
           type: 'bar',
           height: 400,
           width: '100%',
+          stacked: true
         },
         plotOptions: {
           bar: {
@@ -34,7 +31,6 @@
           decimalsInFloat: true,
         },
         xaxis: {
-          categories: obj.title,
           tickPlacement: 'on',
           title: {
             show: true,
@@ -42,19 +38,42 @@
           }
         },
         title:{
-          text: "Document Titles by Frequency",
+          text: "Lemmas by Score",
           align:'center',
 
-        }
-        
-        
-
-
+          }
         };
 
-        var chart = new ApexCharts(document.querySelector("#word-distribution"), options);
+    function drawData(data) {
+        data = data.sort((a,b) => (a.score < b.score) ? 1 : -1);
+        data = data.slice(0, Math.min(data.length, 10));
+        let obj = BarChart(data);
+
+        let options = {
+            series: [
+              {
+                name: "Scores",
+                data: obj.scores
+              },
+              {
+                name: "Frequencies",
+                data: obj.frequencies
+              }
+            ],
+            xaxis: {
+              categories: obj.lemmas
+            }
+        }
+
+        chart.updateOptions(options);
+        console.log("WordDistribution:drawdata", options)
+        return data;
+    }
+
+    onMount(() => {
+        chart = new ApexCharts(document.querySelector("#word-distribution"), options);
         chart.render();
-});
+    });
   
 </script>
 

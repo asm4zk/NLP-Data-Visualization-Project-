@@ -63,16 +63,23 @@ let data = {
 ]}
 
 function BarChart(data) {
-        let titles = [];
+        let lemmas = [];
+        let frequencies = [];
         let scores = [];
+    let sum = 0;
     data.forEach(item => {
-        titles.push(item.title),
-        scores.push(item.score)
+        sum += item.frequency;
+    })
+    data.forEach(item => {
+        lemmas.push(item.lemma)
+        frequencies.push(100 * item.frequency/sum)
+        scores.push(-100 * item.score)
     })
 return {
-    title: titles,
-    score: scores
-}
+    lemmas: lemmas,
+    frequencies: frequencies,
+    scores: scores
+    }
 }
 function ScatterChart(data) {
     let titles= [];
@@ -85,16 +92,26 @@ function ScatterChart(data) {
         data: values
     }
 }
-function BubbleChart(data) {
+
+function BubbleChart(data, algo) {
     let title = [];
-    let values = [];
+    let clusters = {};
     data.forEach(item => {
-        values.push([item.x, item.y, item.score]);
-        title.push(item.title);
+        const ncluster = item[algo];
+        let cluster = clusters[`cluster-${ncluster}`] || [];
+        cluster.push([10 * item.x, 10 * item.y, item.frequency]);
+        clusters[`cluster-${ncluster}`] = cluster;
+        title.push(item.lemma);
     })
-    return {
-        data: values
+    let series = [];
+    for (let key of Object.keys(clusters)) {
+        series.push({
+            name: key,
+            data: clusters[key]
+        })
     }
+
+    return series;
 }
 
 

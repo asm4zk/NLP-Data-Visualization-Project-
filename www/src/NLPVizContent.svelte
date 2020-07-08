@@ -11,6 +11,7 @@
     import TitlePie from './TitlePie.svelte'
     import HeatMap from './HeatMap.svelte'
     import WordBubbleKM from './WordBubbleKM.svelte'
+    import ProgressBar from './ProgressBar.svelte'
 
     $: if (serp.data) console.log("NLPVizContent:$", serp);
 
@@ -21,9 +22,10 @@
             const f = item.frequency;
             if (f > maxF)  {
                 maxF = f;
-                maxW = item.word;
+                maxW = item.lemma;
             }
         }
+        console.log("NLPVizContent:findMainLemma", maxW, maxF)
         return maxW;
     }
 
@@ -31,6 +33,11 @@
 
 <div class="content">
     <div class="container-fluid">
+        {#if serp.info !== "done"}
+        <div class="row-fluid">
+            <ProgressBar status={serp.status} info={serp.info} />
+        </div>
+        {/if}
         {#if serp.data !== undefined}
         <div class="row">
             <div class="col-lg-4 col-md-6 col-sm-6">	
@@ -45,20 +52,32 @@
         </div>
         <div class="row">
             <div class="col-lg-6 col-md-6 col-sm-6">
-                <NLPVizChart title="Titles by Frequency Score" description="These are the top documents in the query based on your search with the comparison of their TFIDF score" color="white">
+                <NLPVizChart title="Lemmas by frequency" description="Main Lemmas sorted by frequency" color="white">
                     <WordDistribution data={ serp.data } /> 
                 </NLPVizChart>
             </div>
             <div class="col-lg-6 col-md-6 col-sm-6">
-                <NLPVizChart title="test 2" description="this is the description for test2" color="white">
-                    <NLPVizScatter data={ serp.data } />
+                <NLPVizChart title="K-Means" description="Clustering" color="white">
+                    <NLPVizBubble  data={serp.data} algo="kmeans"/>
                 </NLPVizChart>
             </div>
         </div>
         <div class="row">
             <div class="col-lg-6 col-md-6 col-sm-6">
-                <NLPVizChart title="test 1" description="this is the description for test1" color="white">
-                    <NLPVizBubble  data={serp.data} />
+                <NLPVizChart title="Latent Dirichlet Allocation" description="Clustering" color="white">
+                    <NLPVizBubble  data={serp.data} algo="lda"/>
+                </NLPVizChart>
+            </div>
+            <div class="col-lg-6 col-md-6 col-sm-6">
+                <NLPVizChart title="HAC" description="Clustering" color="white">
+                    <NLPVizBubble  data={serp.data} algo="hac"/>
+                </NLPVizChart>
+            </div>
+        </div>
+        <!--div class="row">
+            <div class="col-lg-6 col-md-6 col-sm-6">
+                <NLPVizChart title="test 2" description="this is the description for test2" color="white">
+                    <NLPVizScatter data={ serp.data } />
                 </NLPVizChart>
             </div>
             <div class="col-lg-6 col-md-6 col-sm-6">
@@ -86,7 +105,7 @@
                 </NLPVizChart>
             </div>    
         
-        </div>
+        </div-->
         {/if}
     </div>
 </div>	
